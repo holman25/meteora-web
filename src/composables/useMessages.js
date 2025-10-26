@@ -22,21 +22,26 @@ export default function useMessages(chatIdMaybeRef) {
       createdAt: m.createdAt ?? m.created_at ?? m.regstamp ?? undefined,
     }))
 
+  let fetchToken = 0
+
   const fetchMessages = async () => {
     const id = chatIdRef.value
     if (!id) return
+    const myToken = ++fetchToken
     isLoading.value = true
     error.value = null
     try {
       const res  = await getMessagesByChat(id)
+      if (myToken !== fetchToken) return
       const list = res?.messages ?? res?.data?.messages ?? (Array.isArray(res) ? res : [])
       messages.value = normalizeFetched(list)
     } catch (err) {
+      if (myToken !== fetchToken) return
       console.error('[useMessages] fetch error', err)
       error.value = err
       messages.value = []
     } finally {
-      isLoading.value = false
+      if (myToken === fetchToken) isLoading.value = false
     }
   }
 
@@ -65,8 +70,12 @@ export default function useMessages(chatIdMaybeRef) {
       const botText =
         res?.assistant?.content ??
         res?.data?.assistant?.content ??
-        '🤖 Sin respuesta.'
-      messages.value.push({ role: 'assistant', content: botText })
+        ''
+      if (botText && botText.trim()) {
+        messages.value.push({ role: 'assistant', content: botText })
+      } else {
+        messages.value.push({ role: 'assistant', content: '🤖 Sin respuesta.' })
+      }
 
       confirmChatInHistory(id)
       window.dispatchEvent(new CustomEvent('meteora:chat-updated', { detail: { chatId: id } }))
@@ -77,11 +86,14 @@ export default function useMessages(chatIdMaybeRef) {
       isSending.value = false
     }
   }
-  // Recargar al cambiar de chat
-  watch(chatIdRef, async (newId) => {
-    messages.value = []
-    if (newId) await fetchMessages()
-  }, { immediate: true })
+  watch(
+    chatIdRef,
+    async (newId) => {
+      messages.value = []
+      if (newId) await fetchMessages()
+    },
+    { immediate: true }
+  )
 
   return {
     messages,

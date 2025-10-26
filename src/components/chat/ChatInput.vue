@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full px-4 py-4 border-t border-neutral-800 bg-meteora-dark">
+  <div id="chat-input" class="w-full px-4 py-4 border-t border-neutral-800 bg-meteora-dark">
     <form @submit.prevent="handleSubmit" class="mx-auto w-full max-w-3xl flex items-center gap-2">
       <!-- Contenedor animado -->
       <div class="relative flex-1 rounded-2xl p-[2px] bg-gradient-to-r from-fuchsia-500 via-meteora-cyan to-purple-500 animate-border">

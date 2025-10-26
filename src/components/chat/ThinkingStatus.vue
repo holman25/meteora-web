@@ -32,44 +32,78 @@ let typewriterInterval = null
 
 const flows = [
   [
-    "🧪 Estoy desempolvando mis sensores meteorológicos...",
-    "📡 Recibiendo datos desde los satélites... pero está nublado 👀",
-    "🌩️ ¿Eso fue un trueno? Espera, sigo calculando...",
-    "🤯 Este clima sí que me está confundiendo...",
-    "☁️ ¡Listo! Creo que tengo una respuesta... o una nube. O ambas."
+    "🧊 Enfriando los servidores… hace calor hasta aquí 😅",
+    "🌫️ Las nubes se ven misteriosas hoy…",
+    "🧮 Haciendo cálculos meteorológicos y existenciales...",
+    "🌈 Si ves un arcoíris, mándame foto, necesito validarlo 🌤️",
+    "✅ ¡Listo! Datos frescos del clima recién salidos del horno."
   ],
   [
-    "🧠 Pensando profundamente... muy profundamente...",
-    "🌀 El clima cambia tan rápido como mi humor...",
-    "🗺️ Buscando tu ubicación entre las estrellas...",
-    "👽 Un ovni me distrajo... ya vuelvo.",
-    "🔮 El pronóstico está llegando... mágicamente."
+    "🧭 Girando mi brújula digital… parece que está mareada.",
+    "🧰 Ajustando mis barómetros con cinta mágica 🪄",
+    "🌬️ Hablando con el viento (no responde mucho).",
+    "🌊 Detectando humedad… en el ambiente y en mis circuitos.",
+    "🛰️ Clima confirmado: ¡transmisión completada!"
   ],
   [
-    "🔍 Analizando... ¿eso es lluvia o solo nostalgia?",
-    "☕ Preparando una bebida caliente para inspirarme...",
-    "📈 Los datos están fluyendo como el viento 🌬️",
-    "🎻 Suena música dramática mientras pienso...",
-    "🥽 ¡Ya casi! Ajustando mis gafas climáticas."
+    "🌋 Escaneando la atmósfera por si hay drama meteorológico...",
+    "🧤 Abrígate, que este algoritmo se está poniendo frío ❄️",
+    "💫 Consultando con el oráculo de las estaciones...",
+    "📊 Las gráficas del clima están bailando hoy 💃",
+    "☀️ ¡Listo! Ya tengo el pronóstico con estilo."
   ],
   [
-    "🎬 Escena 1: El bot intenta predecir el clima...",
-    "🎬 Escena 2: El bot duda de sus sensores...",
-    "🎬 Escena 3: ¡El bot se ilumina! 💡",
-    "🎬 Final alternativo: sale el sol 🌞",
-    "🎬 Créditos: Meteora – tu IA meteorológica."
+    "🦖 Buscando rastros de dinosaurios… ups, era solo una nube con forma rara.",
+    "🧙‍♂️ Mezclando pociones para invocar el clima perfecto...",
+    "⚡ Cargando energía eléctrica (de un rayo, literalmente).",
+    "💡 Tengo una iluminación... ¡y no es solo el relámpago!",
+    "📜 El clima ha hablado. Te lo traduzco enseguida."
   ],
   [
-    "🐦 Consultando a los pájaros del clima...",
-    "📖 Leyendo las nubes como si fueran poesía...",
-    "🏔️ Preguntándole a las montañas cómo se sienten hoy...",
-    "💭 Soñando con cielos despejados mientras proceso...",
-    "✨ ¡Listo! Tengo algo que te podría gustar."
+    "🧘 Respirando profundamente para sintonizar con la atmósfera...",
+    "🍃 Escuchando los susurros del viento (spoiler: hace frío).",
+    "🐸 Las ranas me dijeron algo sobre lluvia, parece confiable.",
+    "🌻 Las flores confirmaron que huele a pronóstico bueno.",
+    "🪂 ¡Y listo! Descendiendo con la predicción."
+  ],
+  [
+    "🔋 Cargando predicción... y café ☕",
+    "💤 Despertando mis sensores del modo siesta...",
+    "🎩 Sacando un pronóstico del sombrero (funciona 80% de las veces).",
+    "🧊 Procesando... espero que no se me congele el sistema.",
+    "🚀 ¡Ahí va! El clima viene en camino."
+  ],
+  [
+    "🕵️‍♂️ Investigando si es lluvia o lágrimas del cielo...",
+    "🔬 Analizando partículas de drama en el ambiente.",
+    "🌪️ El viento me susurró un spoiler: se avecinan cambios.",
+    "🧩 Uniendo piezas del rompecabezas meteorológico...",
+    "🎉 Caso resuelto: tengo el pronóstico perfecto."
+  ],
+  [
+    "🧭 Consultando los archivos secretos del clima...",
+    "⏳ Esperando que el tiempo (literalmente) me diga la verdad.",
+    "👁️ Visualizando el horizonte… wow, qué bonito.",
+    "🎢 El clima de hoy parece una montaña rusa.",
+    "📬 Predicción lista. ¡Abrígate emocionalmente!"
+  ],
+  [
+    "🐧 Pingüinos reportan desde el sur: todo bajo cero 🥶",
+    "🦩 Flamencos del norte dicen: calorcito asegurado ☀️",
+    "🎙️ Yo solo transmito lo que ellos dicen...",
+    "📡 Sintetizando informes con estilo tropical.",
+    "🌍 ¡Listo! Clima internacional servido."
+  ],
+  [
+    "🕹️ Iniciando simulación climática en 3... 2... 1...",
+    "💾 Guardando pronóstico en la nube (literalmente).",
+    "🎮 Nivel 1: lluvia ligera. Nivel 2: caos total.",
+    "🧭 Tomando dirección del viento... o intentando.",
+    "🏁 Misión completada: pronóstico desbloqueado."
   ]
 ]
 
 watch(() => props.show, (newVal) => {
-  console.log('[ThinkingStatus] show changed to:', newVal)
   if (newVal) {
     startThinking()
   } else {
@@ -89,11 +123,10 @@ function typewriterEffect(text) {
     } else {
       clearInterval(typewriterInterval)
     }
-  }, 50) // 50ms por carácter - más lento para que se aprecie
+  }, 50)
 }
 
 function startThinking() {
-  console.log('[ThinkingStatus] Starting thinking animation')
   stopThinking()
   
   const flow = flows[Math.floor(Math.random() * flows.length)]
@@ -112,7 +145,6 @@ function startThinking() {
 }
 
 function stopThinking() {
-  console.log('[ThinkingStatus] Stopping thinking animation')
   if (interval) {
     clearInterval(interval)
     interval = null

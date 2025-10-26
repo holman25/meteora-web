@@ -1,58 +1,106 @@
-import { ref, watch } from 'vue'
+import { ref, watch, isRef } from 'vue'
 import { getMessagesByChat, sendMessageToChat } from '@/api/messages'
 import useUserLocation from '@/composables/useUserLocation'
+import useChatSession, { confirmChatInHistory } from '@/composables/useChatSession'
 
-export default function useMessages(chatId) {
-  const messages = ref([])
-  const isLoading = ref(false)
-  const error = ref(null)
+export default function useMessages(chatIdMaybeRef) {
+  const chatIdRef = isRef(chatIdMaybeRef) ? chatIdMaybeRef : ref(chatIdMaybeRef)
+  const { startChatSession } = useChatSession()
+
+  const messages   = ref([])
+  const isLoading  = ref(false)
+  const isSending  = ref(false)
+  const error      = ref(null)
   const { location } = useUserLocation()
 
+  // --- helpers ---
+  const normalizeFetched = (arr = []) =>
+    arr.map(m => ({
+      role: m.role || m.sender || (m.is_user ? 'user' : 'assistant'),
+      content: m.content ?? m.text ?? '',
+      id: m.id ?? m.messageId ?? undefined,
+      createdAt: m.createdAt ?? m.created_at ?? m.regstamp ?? undefined,
+    }))
+
+  let fetchToken = 0
+
   const fetchMessages = async () => {
-    if (!chatId.value) return
+    const id = chatIdRef.value
+    if (!id) return
+    const myToken = ++fetchToken
     isLoading.value = true
+    error.value = null
     try {
-      const res = await getMessagesByChat(chatId.value)
-      messages.value = res.messages || []
+      const res  = await getMessagesByChat(id)
+      if (myToken !== fetchToken) return
+      const list = res?.messages ?? res?.data?.messages ?? (Array.isArray(res) ? res : [])
+      messages.value = normalizeFetched(list)
     } catch (err) {
+      if (myToken !== fetchToken) return
+      console.error('[useMessages] fetch error', err)
       error.value = err
+      messages.value = []
     } finally {
-      isLoading.value = false
+      if (myToken === fetchToken) isLoading.value = false
     }
   }
 
   const sendMessage = async (text) => {
-    if (!chatId.value || !text) return
+    if (!text) return
+
+    if (!chatIdRef.value) {
+      const { id } = await startChatSession({ forceNew: true })
+      chatIdRef.value = id
+    }
+
+    const id = chatIdRef.value
+    if (!id) return
+
+    messages.value.push({ role: 'user', content: text })
 
     const payload = {
       content: text,
       date: 'hoy',
+      ...(location.value && { location: { lat: location.value.lat, lon: location.value.lon } }),
     }
 
-    if (location.value) {
-      payload.location = {
-        lat: location.value.lat,
-        lon: location.value.lon,
-      }
-    }
-
-    messages.value.push({ sender: 'user', text })
-
+    isSending.value = true
     try {
-      const res = await sendMessageToChat(chatId.value, payload)
-      messages.value.push({ sender: 'bot', text: res.assistant?.content || '🤖 Sin respuesta.' })
+      const res = await sendMessageToChat(id, payload)
+      const botText =
+        res?.assistant?.content ??
+        res?.data?.assistant?.content ??
+        ''
+      if (botText && botText.trim()) {
+        messages.value.push({ role: 'assistant', content: botText })
+      } else {
+        messages.value.push({ role: 'assistant', content: '🤖 Sin respuesta.' })
+      }
+
+      confirmChatInHistory(id)
+      window.dispatchEvent(new CustomEvent('meteora:chat-updated', { detail: { chatId: id } }))
     } catch (err) {
-      messages.value.push({ sender: 'bot', text: '❌ Error procesando tu consulta.' })
+      console.error('[useMessages] send error', err)
+      messages.value.push({ role: 'assistant', content: '❌ Error procesando tu consulta.' })
+    } finally {
+      isSending.value = false
     }
   }
-
-  watch(chatId, fetchMessages, { immediate: true })
+  watch(
+    chatIdRef,
+    async (newId) => {
+      messages.value = []
+      if (newId) await fetchMessages()
+    },
+    { immediate: true }
+  )
 
   return {
     messages,
     isLoading,
+    isSending,
     error,
     fetchMessages,
-    sendMessage
+    sendMessage,
   }
 }

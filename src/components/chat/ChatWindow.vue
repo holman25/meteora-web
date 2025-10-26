@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col flex-1 overflow-y-auto px-4 sm:px-6 pt-12 pb-32 space-y-4">
+  <div id="chat-window" class="flex flex-col flex-1 overflow-y-auto px-4 sm:px-6 pt-12 pb-32 space-y-4">
     <!-- Estado inicial -->
     <transition name="fade-slide" mode="out-in">
       <div v-if="props.messages.length === 0" key="empty" class="flex flex-col items-center justify-center mt-24 text-center text-neutral-400">
@@ -42,7 +42,6 @@ const props = defineProps({
   }
 })
 
-console.log('[ChatWindow] isWaitingResponse:', props.isWaitingResponse)
 </script>
 
 <style scoped>

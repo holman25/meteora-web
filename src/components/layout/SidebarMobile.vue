@@ -1,42 +1,65 @@
 <template>
   <transition name="slide">
-    <div v-if="isOpen" class="fixed inset-0 z-50 flex">
-      <!-- Fondo oscuro transparente -->
+    <div id="sidebar-mobile" v-if="isOpen" class="fixed inset-0 z-50 flex">
       <div class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm" @click="$emit('close')"></div>
 
-      <!-- Panel lateral animado -->
       <aside class="relative w-64 bg-meteora-dark text-white shadow-xl z-50 flex flex-col justify-between border-r border-neutral-800">
-        <!-- Encabezado -->
         <div>
+          <!-- Header -->
           <div class="px-6 py-5 border-b border-neutral-800 flex items-center justify-between">
             <div>
-              <h1 class="text-xl font-semibold bg-gradient-to-r from-gradient-start via-gradient-mid to-gradient-end bg-clip-text text-transparent">
-                Meteora
-              </h1>
+              <h1 class="text-xl font-semibold bg-gradient-to-r from-gradient-start via-gradient-mid to-gradient-end bg-clip-text text-transparent">Meteora</h1>
               <p class="text-sm text-neutral-400">Asistente de Clima</p>
             </div>
-            <button @click="$emit('close')" class="text-neutral-400 hover:text-white text-lg">
-              ✖
-            </button>
+            <button @click="$emit('close')" class="text-neutral-400 hover:text-white text-lg">✖</button>
           </div>
 
-          <!-- Botón animado -->
+          <!-- Nueva conversación -->
           <div class="p-4">
             <div class="relative group">
               <div class="absolute -inset-[2px] bg-gradient-to-r from-gradient-start via-gradient-mid to-gradient-end rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-300 animate-border-loop"></div>
-              <button class="relative w-full bg-meteora-dark text-white font-semibold py-2 px-4 rounded-lg border border-neutral-700 z-10">
+              <button
+                class="relative w-full bg-meteora-dark text-white font-semibold py-2 px-4 rounded-lg border border-neutral-700 z-10 disabled:opacity-60"
+                :disabled="isLoading"
+                @click="newConversation"
+              >
                 + Nueva conversación
               </button>
             </div>
           </div>
 
-          <!-- Chats recientes -->
+          <!-- Recientes -->
           <nav class="px-4 space-y-1 text-sm text-neutral-400">
             <p class="px-2 py-1 font-medium uppercase tracking-wide">Recientes</p>
-            <div class="space-y-1">
-              <button class="w-full text-left px-3 py-2 rounded-md hover:bg-meteora-light transition text-white font-medium flex items-center gap-2">
-                💬 No hay conversaciones aún
-              </button>
+
+            <div v-if="isLoading" class="px-3 py-2 text-neutral-500">Cargando…</div>
+
+            <div v-else class="space-y-1">
+              <template v-if="chats.length">
+                <div
+                  v-for="chat in chats"
+                  :key="chat.id"
+                  class="group flex items-center justify-between gap-2 px-2 py-1 rounded-md hover:bg-meteora-light"
+                >
+                  <button
+                    class="flex-1 text-left px-1 py-1 rounded-md transition font-medium flex items-center gap-2 text-neutral-100 hover:text-white"
+                    :class="chat.id === activeChatId ? 'animate-pulse text-white' : ''"
+                    @click="selectChat(chat.id)"
+                    :title="preview(chat)"
+                  >
+                    💬 {{ preview(chat) }}
+                  </button>
+                  <button
+                    class="opacity-70 hover:opacity-100 p-1 rounded-md border border-neutral-700 hover:border-red-400 hover:text-red-300 transition"
+                    title="Eliminar"
+                    @click.stop="askDelete(chat.id)"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </template>
+
+              <p v-else class="px-3 py-2 text-neutral-500">No hay conversaciones aún</p>
             </div>
           </nav>
         </div>
@@ -46,25 +69,113 @@
           Holman Alba · All rights reserved. 2025
         </footer>
       </aside>
+
+      <!-- Modal confirm -->
+      <transition name="fade">
+        <div v-if="showConfirm" class="fixed inset-0 z-[60] flex items-center justify-center">
+          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="cancelDelete"></div>
+          <div class="relative z-10 w-full max-w-sm rounded-2xl border border-white/10 bg-[#0b0f14]/90 p-5 shadow-2xl">
+            <h3 class="text-lg font-semibold">Eliminar conversación</h3>
+            <p class="text-sm text-neutral-400 mt-2">¿Seguro que deseas eliminar esta conversación del historial?</p>
+            <div class="mt-5 flex justify-end gap-2">
+              <button class="px-3 py-1.5 rounded-md border border-neutral-700 hover:bg-neutral-800" @click="cancelDelete">Cancelar</button>
+              <button class="px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-500" @click="confirmDelete">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      </transition>
     </div>
   </transition>
 </template>
 
 <script setup>
-defineProps({
-  isOpen: Boolean
+import { onMounted, onBeforeUnmount, ref, nextTick } from 'vue'
+import useChatHistory from '@/composables/useChatHistory'
+import useChatSession from '@/composables/useChatSession'
+
+const props = defineProps({ isOpen: Boolean, activeChatId: String })
+const emit  = defineEmits(['close', 'select-chat'])
+
+const { chats, isLoading, loadHistory } = useChatHistory()
+const { startChatSession, removeChatFromHistory } = useChatSession()
+
+onMounted(() => {
+  loadHistory()
+  window.addEventListener('meteora:chat-updated', onChatUpdated)
 })
+onBeforeUnmount(() => {
+  window.removeEventListener('meteora:chat-updated', onChatUpdated)
+})
+function onChatUpdated() { loadHistory() }
+
+function preview(chat) {
+  const lm = chat.lastMessage?.content ?? chat.messages?.[0]?.content ?? ''
+  const text = (lm || 'Sin mensaje').trim()
+  return text.length > 40 ? text.slice(0, 40) + '…' : text
+}
+
+function selectChat(id) {
+  emit('select-chat', id)
+  emit('close')
+}
+
+async function newConversation() {
+  try {
+    window.dispatchEvent(new CustomEvent('meteora:overlay-show', { detail: { message: 'Creando nueva conversación…' } }))
+    const { id } = await startChatSession({ forceNew: true })
+    emit('select-chat', id)
+    emit('close')
+  } catch (err) {
+    console.error('Error creando nueva conversación:', err)
+  } finally {
+    window.dispatchEvent(new Event('meteora:overlay-hide'))
+  }
+}
+
+const showConfirm = ref(false)
+const toDeleteId  = ref(null)
+
+function askDelete(id) { toDeleteId.value = id; showConfirm.value = true }
+function cancelDelete() { showConfirm.value = false; toDeleteId.value = null }
+
+async function confirmDelete() {
+  const id = toDeleteId.value
+  if (!id) return
+
+  window.dispatchEvent(new CustomEvent('meteora:overlay-show', { detail: { message: 'Eliminando conversación…' } }))
+
+  const remaining = removeChatFromHistory(id)
+
+  const now = (chats.value || []).filter(c => c.id !== id)
+  chats.value = now
+  await nextTick()
+
+  await loadHistory()
+  await nextTick()
+
+  if (props.activeChatId === id) {
+    if (remaining.length > 0) {
+      emit('select-chat', remaining[0])
+    } else {
+      try {
+        window.dispatchEvent(new CustomEvent('meteora:overlay-show', { detail: { message: 'Creando nueva conversación…' } }))
+        const { id: newId } = await startChatSession({ forceNew: true })
+        emit('select-chat', newId)
+      } catch (e) {
+        console.error('[SidebarMobile] Error creando chat nuevo tras eliminar el único', e)
+      } finally {
+        window.dispatchEvent(new Event('meteora:overlay-hide'))
+      }
+    }
+  }
+  cancelDelete()
+  window.dispatchEvent(new Event('meteora:overlay-hide'))
+}
 </script>
 
 <style scoped>
-.slide-enter-active,
-.slide-leave-active {
-  transition: transform 0.3s ease;
-}
-.slide-enter-from {
-  transform: translateX(-100%);
-}
-.slide-leave-to {
-  transform: translateX(-100%);
-}
+.slide-enter-active, .slide-leave-active { transition: transform 0.3s ease; }
+.slide-enter-from, .slide-leave-to { transform: translateX(-100%); }
+.fade-enter-active, .fade-leave-active { transition: opacity .15s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

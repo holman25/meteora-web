@@ -65,8 +65,7 @@ Antes de ejecutar el proyecto, asegúrate de crear tu archivo de entorno a parti
 ---
 
 # Copiar el archivo de ejemplo
-cp .env.example .env
-
+cp .env.example.env .env
 ---
 # Instalar dependencias
 npm install

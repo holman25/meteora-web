@@ -92,8 +92,9 @@ import ChatInput from '../chat/ChatInput.vue'
 import LoadingOverlay from '@/components/common/LoadingOverlay.vue'
 import Onboarding from '@/components/landing/Onboarding.vue'
 
-import useChatSession from '../../composables/useChatSession'
-import useMessages from '../../composables/useMessages'
+import useChatSession from '@/composables/useChatSession'
+import useMessages from '@/composables/useMessages'
+import useUserLocation from '@/composables/useUserLocation'
 
 const showSidebar = ref(false)
 const scrollArea = ref(null)
@@ -104,6 +105,7 @@ const showOnboarding = ref(false)
 
 const { chatId, startChatSession, getChatHistory } = useChatSession()
 const { messages, isLoading, isSending, sendMessage, fetchMessages } = useMessages(chatId)
+const { ensureLocation } = useUserLocation()
 
 function showOverlay(msg) { overlayMessage.value = msg || 'Cargando…'; overlayVisible.value = true }
 function hideOverlay() { overlayVisible.value = false; overlayMessage.value = '' }
@@ -112,6 +114,7 @@ function onCreateStart() { showOverlay('Creando nueva conversación…') }
 function onCreateEnd() { hideOverlay() }
 function onOverlayShow(e) { showOverlay(e?.detail?.message || 'Cargando…') }
 function onOverlayHide() { hideOverlay() }
+
 function resetToOnboarding() {
   hideOverlay()
   localStorage.removeItem('meteora-chat-id')
@@ -119,11 +122,24 @@ function resetToOnboarding() {
   showOnboarding.value = true
 }
 
+
+function onLocationRequired() {
+  resetToOnboarding()
+}
+
 onMounted(async () => {
   window.addEventListener('meteora:creating-chat-start', onCreateStart)
   window.addEventListener('meteora:creating-chat-end', onCreateEnd)
   window.addEventListener('meteora:overlay-show', onOverlayShow)
   window.addEventListener('meteora:overlay-hide', onOverlayHide)
+  window.addEventListener('meteora:location-required', onLocationRequired)
+
+  try {
+    await ensureLocation({ forcePrompt: true })
+  } catch (e) {
+    resetToOnboarding()
+    return
+  }
 
   const history = getChatHistory()
   if (!chatId.value && history.length === 0) {
@@ -133,14 +149,14 @@ onMounted(async () => {
 
   if (!chatId.value) {
     showOverlay('Creando nueva conversación…')
-  try {
-    await startChatSession({ forceNew: true })
-  } catch (e) {
-    resetToOnboarding()
-    return
-  } finally {
-    hideOverlay()
-  }
+    try {
+      await startChatSession({ forceNew: true })
+    } catch (e) {
+      resetToOnboarding()
+      return
+    } finally {
+      hideOverlay()
+    }
   }
 })
 
@@ -149,6 +165,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('meteora:creating-chat-end', onCreateEnd)
   window.removeEventListener('meteora:overlay-show', onOverlayShow)
   window.removeEventListener('meteora:overlay-hide', onOverlayHide)
+  window.removeEventListener('meteora:location-required', onLocationRequired)
 })
 
 watch(messages, async () => {
@@ -161,7 +178,7 @@ const hasMessages = computed(() => messages.value.length > 0)
 async function addMessage(newMsg) {
   const text = newMsg?.text ?? newMsg
   if (!text) return
-  await sendMessage(text)
+  await sendMessage(text) // sendMessage ya valida ubicación internamente
 }
 
 async function handleChatSelection(id) {
@@ -181,6 +198,14 @@ async function handleChatSelectionAndClose(id) {
 }
 
 async function startFromOnboarding() {
+  // Al salir del Onboarding, vuelve a exigir ubicación
+  try {
+    await ensureLocation({ forcePrompt: true })
+  } catch {
+    resetToOnboarding()
+    return
+  }
+
   showOnboarding.value = false
   showOverlay('Creando nueva conversación…')
   try {
@@ -189,11 +214,12 @@ async function startFromOnboarding() {
   } catch (e) {
     resetToOnboarding()
     return
-  }finally {
+  } finally {
     hideOverlay()
   }
 }
 </script>
+
 
 <style scoped>
 @keyframes spin-slow {

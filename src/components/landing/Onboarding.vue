@@ -52,7 +52,7 @@
           </button>
         </div>
 
-        <p class="mt-6 text-xs text-neutral-500">Más adelante podemos guiarte con un tour usando <code>driver.js</code> ✨</p>
+        <p class="mt-6 text-xs text-neutral-500"> <code>By Holman Alba 2025 All Rights </code> ✨</p>
       </div>
 
       <div

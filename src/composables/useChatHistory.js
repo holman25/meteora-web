@@ -18,7 +18,6 @@ async function loadHistory() {
     })
     chats.value = response.data
   } catch (err) {
-    console.error('Error loading chat history', err)
   } finally {
     isLoading.value = false
   }

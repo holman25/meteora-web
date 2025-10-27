@@ -56,6 +56,18 @@ Los usuarios pueden chatear directamente con Meteora para conocer las condicione
 git clone https://github.com/holman25/meteora-web.git
 cd meteora-web
 
+---
+
+## ⚙️ Configuración del Entorno (.env)
+Antes de ejecutar el proyecto, asegúrate de crear tu archivo de entorno a partir del ejemplo incluido en el repositorio:
+```bash
+
+---
+
+# Copiar el archivo de ejemplo
+cp .env.example .env
+
+---
 # Instalar dependencias
 npm install
 

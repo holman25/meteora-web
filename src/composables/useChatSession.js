@@ -31,7 +31,7 @@ const startChatSession = async ({ forceNew = false } = {}) => {
   }
 
   try {
-    const { data } = await axios.post('http://localhost:8080/api/v1/chats')
+    const { data } = await axios.post('/chats')
     const newId = data.chatId
     setCurrent(newId)
     return { id: newId, reused: false }

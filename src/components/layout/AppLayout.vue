@@ -112,6 +112,12 @@ function onCreateStart() { showOverlay('Creando nueva conversación…') }
 function onCreateEnd() { hideOverlay() }
 function onOverlayShow(e) { showOverlay(e?.detail?.message || 'Cargando…') }
 function onOverlayHide() { hideOverlay() }
+function resetToOnboarding() {
+  hideOverlay()
+  localStorage.removeItem('meteora-chat-id')
+  chatId.value = ''
+  showOnboarding.value = true
+}
 
 onMounted(async () => {
   window.addEventListener('meteora:creating-chat-start', onCreateStart)
@@ -127,12 +133,14 @@ onMounted(async () => {
 
   if (!chatId.value) {
     showOverlay('Creando nueva conversación…')
-    try {
-      await startChatSession({ forceNew: true })
-      await fetchMessages()
-    } finally {
-      hideOverlay()
-    }
+  try {
+    await startChatSession({ forceNew: true })
+  } catch (e) {
+    resetToOnboarding()
+    return
+  } finally {
+    hideOverlay()
+  }
   }
 })
 
@@ -178,7 +186,10 @@ async function startFromOnboarding() {
   try {
     await startChatSession({ forceNew: true })
     await fetchMessages()
-  } finally {
+  } catch (e) {
+    resetToOnboarding()
+    return
+  }finally {
     hideOverlay()
   }
 }

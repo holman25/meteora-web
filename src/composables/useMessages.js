@@ -6,14 +6,12 @@ import useChatSession, { confirmChatInHistory } from '@/composables/useChatSessi
 export default function useMessages(chatIdMaybeRef) {
   const chatIdRef = isRef(chatIdMaybeRef) ? chatIdMaybeRef : ref(chatIdMaybeRef)
   const { startChatSession } = useChatSession()
+  const messages = ref([])
+  const isLoading = ref(false)
+  const isSending = ref(false)
+  const error = ref(null)
+  const { location, ensureLocation } = useUserLocation()
 
-  const messages   = ref([])
-  const isLoading  = ref(false)
-  const isSending  = ref(false)
-  const error      = ref(null)
-  const { location } = useUserLocation()
-
-  // --- helpers ---
   const normalizeFetched = (arr = []) =>
     arr.map(m => ({
       role: m.role || m.sender || (m.is_user ? 'user' : 'assistant'),
@@ -31,7 +29,7 @@ export default function useMessages(chatIdMaybeRef) {
     isLoading.value = true
     error.value = null
     try {
-      const res  = await getMessagesByChat(id)
+      const res = await getMessagesByChat(id)
       if (myToken !== fetchToken) return
       const list = res?.messages ?? res?.data?.messages ?? (Array.isArray(res) ? res : [])
       messages.value = normalizeFetched(list)
@@ -45,8 +43,15 @@ export default function useMessages(chatIdMaybeRef) {
     }
   }
 
-  const sendMessage = async (text) => {
+  const sendMessage = async text => {
     if (!text) return
+    try {
+      await ensureLocation({ forcePrompt: true })
+    } catch {
+      window.dispatchEvent(new CustomEvent('meteora:location-required'))
+      messages.value.push({ role: 'assistant', content: '📍 Necesitas activar tu ubicación para usar Meteora.' })
+      return
+    }
 
     if (!chatIdRef.value) {
       const { id } = await startChatSession({ forceNew: true })
@@ -61,22 +66,19 @@ export default function useMessages(chatIdMaybeRef) {
     const payload = {
       content: text,
       date: 'hoy',
-      ...(location.value && { location: { lat: location.value.lat, lon: location.value.lon } }),
+      location: { lat: location.value.lat, lon: location.value.lon },
     }
 
     isSending.value = true
     try {
       const res = await sendMessageToChat(id, payload)
       const botText =
-        res?.assistant?.content ??
-        res?.data?.assistant?.content ??
-        ''
+        res?.assistant?.content ?? res?.data?.assistant?.content ?? ''
       if (botText && botText.trim()) {
         messages.value.push({ role: 'assistant', content: botText })
       } else {
         messages.value.push({ role: 'assistant', content: '🤖 Sin respuesta.' })
       }
-
       confirmChatInHistory(id)
       window.dispatchEvent(new CustomEvent('meteora:chat-updated', { detail: { chatId: id } }))
     } catch (err) {
@@ -86,9 +88,10 @@ export default function useMessages(chatIdMaybeRef) {
       isSending.value = false
     }
   }
+
   watch(
     chatIdRef,
-    async (newId) => {
+    async newId => {
       messages.value = []
       if (newId) await fetchMessages()
     },

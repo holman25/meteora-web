@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ref } from 'vue'
 
 vi.mock('@/composables/useUserLocation', () => ({
-  default: () => ({ location: { value: null } }),
+  default: () => ({
+    location: { value: { lat: 0, lon: 0 } },
+    ensureLocation: vi.fn(async () => ({ lat: 0, lon: 0 })),
+  }),
 }))
 
 describe('useMessages', () => {
